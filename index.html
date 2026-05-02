@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virtuelles Labor – Fremderregter Gleichstrommotor (GSM)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0f172a; --panel:#1e293b; --panel2:#334155;
+  --text:#e2e8f0; --muted:#94a3b8;
+  --primary:#3b82f6; --success:#10b981; --warning:#f59e0b; --danger:#ef4444;
+  --accent:#8b5cf6; --info:#06b6d4;
+  --border:#475569;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg); color:var(--text); line-height:1.6;
+  min-height:100vh;
+}
+.container{max-width:1400px;margin:0 auto;padding:20px}
+header{
+  background:linear-gradient(135deg,#1e3a8a 0%, #6d28d9 100%);
+  padding:24px;border-radius:12px;margin-bottom:24px;
+  box-shadow:0 4px 6px rgba(0,0,0,0.3);
+  position:relative;
+}
+header h1{font-size:28px;margin-bottom:8px}
+header .sub{color:#cbd5e1;font-size:15px}
+header .meta{margin-top:12px;display:flex;gap:24px;flex-wrap:wrap;font-size:13px;color:#cbd5e1}
+
+.teacher-badge{
+  position:absolute;top:20px;right:20px;
+  background:#fbbf24;color:#1f2937;padding:6px 14px;border-radius:20px;
+  font-size:12px;font-weight:bold;display:none;cursor:pointer;
+  transition:transform .15s, background .15s;
+  user-select:none;
+}
+.teacher-badge.active{display:block}
+.teacher-badge:hover{background:#f59e0b;transform:scale(1.05)}
+.teacher-badge .x{margin-left:6px;opacity:.7}
+
+/* Tabs */
+.tabs{
+  display:flex;gap:4px;background:var(--panel);padding:6px;
+  border-radius:10px;margin-bottom:20px;overflow-x:auto;
+  position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.4);
+}
+.tab{
+  padding:12px 18px;cursor:pointer;border:none;background:transparent;
+  color:var(--muted);border-radius:8px;font-size:14px;font-weight:600;
+  white-space:nowrap;transition:all .2s;display:flex;align-items:center;gap:8px;
+}
+.tab:hover{background:var(--panel2);color:var(--text)}
+.tab.active{background:var(--primary);color:white}
+.tab .badge{background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;font-size:11px}
+.tab.done .badge{background:var(--success)}
+
+.phase{display:none;animation:fadeIn .3s}
+.phase.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.card{
+  background:var(--panel);padding:20px;border-radius:12px;margin-bottom:16px;
+  border:1px solid var(--border);
+}
+.card h2{margin-bottom:12px;color:#60a5fa;font-size:20px;display:flex;align-items:center;gap:10px}
+.card h3{margin:16px 0 8px;color:#a78bfa;font-size:16px}
+.card p{margin-bottom:10px}
+
+.danger-card{
+  background:linear-gradient(135deg,#7f1d1d 0%, #991b1b 100%);
+  border-color:#ef4444;
+}
+.danger-card h2{color:#fecaca}
+.warning-card{
+  background:linear-gradient(135deg,#78350f 0%, #92400e 100%);
+  border-color:#f59e0b;
+}
+.warning-card h2{color:#fde68a}
+.success-card{
+  background:linear-gradient(135deg,#064e3b 0%, #065f46 100%);
+  border-color:#10b981;
+}
+.success-card h2{color:#a7f3d0}
+.info-card{
+  background:linear-gradient(135deg,#1e3a8a 0%, #1e40af 100%);
+  border-color:#3b82f6;
+}
+.teacher-card{
+  background:linear-gradient(135deg,#451a03 0%, #78350f 100%);
+  border:2px dashed #fbbf24;
+}
+.teacher-card h2{color:#fbbf24}
+
+.formula{
+  background:#0f172a;padding:14px 18px;border-radius:8px;
+  font-family:"Courier New",monospace;font-size:15px;
+  border-left:3px solid var(--accent);margin:8px 0;
+}
+.formula b{color:#fbbf24}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr}}
+
+/* Virtual Lab Layout */
+.lab-layout{
+  display:grid;grid-template-columns:1fr 1fr;gap:20px;
+}
+@media(max-width:1100px){.lab-layout{grid-template-columns:1fr}}
+
+/* Instruments */
+.instruments{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:10px;
+}
+.instr{
+  background:#0f172a;border:2px solid var(--border);
+  border-radius:10px;padding:14px;text-align:center;
+}
+.instr.active{border-color:var(--success);box-shadow:0 0 12px rgba(16,185,129,0.4)}
+.instr.danger{border-color:var(--danger);box-shadow:0 0 12px rgba(239,68,68,0.6);animation:pulse .8s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 12px rgba(239,68,68,0.6)}50%{box-shadow:0 0 20px rgba(239,68,68,0.9)}}
+.instr .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.instr .value{font-size:24px;font-weight:bold;font-family:"Courier New",monospace;margin:6px 0;color:#fbbf24}
+.instr .unit{font-size:12px;color:var(--muted)}
+
+/* Controls */
+.control-panel{
+  background:var(--panel2);padding:16px;border-radius:10px;margin-top:12px;
+}
+.control-row{
+  display:grid;grid-template-columns:90px 1fr 60px;gap:10px;align-items:center;
+  margin-bottom:12px;
+}
+.control-row label{font-size:13px;font-weight:600}
+.control-row input[type="range"]{width:100%}
+.control-row .val{font-family:monospace;text-align:right;font-size:13px;color:#fbbf24}
+.switch{
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+  padding:8px 14px;background:var(--panel);border-radius:8px;
+  border:2px solid var(--border);transition:all .2s;
+}
+.switch.on{background:var(--success);border-color:var(--success)}
+.switch.off{background:#374151}
+.switch-group{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+
+/* Steps */
+.steps{counter-reset:step}
+.step{
+  background:var(--panel);border:2px solid var(--border);border-radius:10px;
+  padding:14px 18px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;
+  transition:all .2s;
+}
+.step::before{
+  counter-increment:step;content:counter(step);
+  background:var(--panel2);width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  font-weight:bold;font-size:14px;
+}
+.step.current{border-color:var(--primary);background:#1e3a8a30}
+.step.current::before{background:var(--primary);color:white}
+.step.done{border-color:var(--success);opacity:.7}
+.step.done::before{background:var(--success);content:"✓";color:white}
+.step .step-content{flex:1}
+.step .step-title{font-weight:600;margin-bottom:4px}
+.step .step-desc{font-size:13px;color:var(--muted)}
+
+button.btn{
+  padding:10px 18px;border:none;border-radius:8px;font-weight:600;
+  cursor:pointer;font-size:14px;transition:all .15s;
+  background:var(--primary);color:white;
+}
+button.btn:hover{background:#2563eb;transform:translateY(-1px)}
+button.btn:disabled{background:#475569;cursor:not-allowed;transform:none}
+button.btn.success{background:var(--success)}
+button.btn.danger{background:var(--danger)}
+button.btn.warning{background:var(--warning);color:#1f2937}
+button.btn.ghost{background:transparent;border:2px solid var(--border);color:var(--text)}
+button.btn.teacher{background:#fbbf24;color:#1f2937}
+
+/* Tables */
+table.measure{
+  width:100%;border-collapse:collapse;background:var(--panel);
+  border-radius:8px;overflow:hidden;
+}
+table.measure th, table.measure td{
+  padding:10px 12px;text-align:center;border-bottom:1px solid var(--border);
+}
+table.measure th{background:var(--panel2);font-size:13px;color:#cbd5e1}
+table.measure td{font-family:monospace;font-size:14px}
+table.measure tr.recorded{background:#064e3b40}
+table.measure tr.current-row{background:#1e3a8a40;border-left:3px solid var(--primary)}
+table.measure td.empty{color:var(--muted);font-style:italic}
+
+/* Alert / Toast */
+.toast-area{
+  position:fixed;top:20px;right:20px;z-index:9999;
+  display:flex;flex-direction:column;gap:10px;max-width:380px;
+}
+.toast{
+  padding:14px 18px;border-radius:10px;color:white;font-weight:500;
+  box-shadow:0 8px 24px rgba(0,0,0,0.5);animation:slideIn .3s;
+  display:flex;gap:10px;align-items:flex-start;
+}
+@keyframes slideIn{from{transform:translateX(120%)}to{transform:none}}
+.toast.success{background:var(--success)}
+.toast.danger{background:var(--danger)}
+.toast.warning{background:var(--warning);color:#1f2937}
+.toast.info{background:var(--info)}
+.toast .icon{font-size:20px;flex-shrink:0}
+
+/* Modal */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.85);
+  display:none;align-items:center;justify-content:center;z-index:9000;padding:20px;
+}
+.modal-overlay.active{display:flex}
+.modal-overlay.danger-active{
+  animation: overlayBlink 0.5s infinite;
+}
+@keyframes overlayBlink{
+  0%,100%{background:rgba(127,29,29,0.85)}
+  50%{background:rgba(220,38,38,0.7)}
+}
+.modal{
+  background:var(--panel);padding:30px;border-radius:14px;max-width:560px;width:100%;
+  border:3px solid var(--danger);position:relative;
+}
+.modal h2{color:var(--danger);margin-bottom:14px;font-size:24px}
+.modal p{margin-bottom:14px}
+.modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+
+.modal.blink{
+  animation: modalBlink 0.45s infinite, modalShake 0.4s 3;
+  border-width:4px;
+}
+@keyframes modalBlink{
+  0%,100%{background:#7f1d1d;border-color:#ef4444;box-shadow:0 0 30px #ef4444}
+  50%{background:#dc2626;border-color:#fecaca;box-shadow:0 0 80px #ef4444}
+}
+@keyframes modalShake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-8px)}
+  40%{transform:translateX(8px)}
+  60%{transform:translateX(-6px)}
+  80%{transform:translateX(6px)}
+}
+.modal.blink h2{
+  color:#fff !important;font-size:30px;text-align:center;
+  text-shadow:0 0 14px #fff, 0 0 6px #fbbf24;
+  animation: titlePulse 0.45s infinite alternate;
+  letter-spacing:1px;
+}
+@keyframes titlePulse{
+  0%{opacity:.75;transform:scale(1)}
+  100%{opacity:1;transform:scale(1.06)}
+}
+.modal.blink .lock-tag{
+  display:inline-block;background:#000;color:#fbbf24;
+  padding:4px 10px;border-radius:6px;font-size:12px;font-weight:bold;
+  margin-bottom:10px;letter-spacing:2px;border:2px solid #fbbf24;
+}
+.modal.blink p{color:#fde68a}
+.modal.blink b{color:#fff}
+
+/* Progress */
+.progress-bar{
+  background:var(--panel2);height:10px;border-radius:5px;overflow:hidden;
+  margin:8px 0 4px;
+}
+.progress-fill{
+  height:100%;background:linear-gradient(90deg,var(--success),var(--primary));
+  transition:width .4s;
+}
+
+/* Checklist */
+.checklist{list-style:none}
+.checklist li{
+  padding:10px 14px;background:var(--panel2);margin-bottom:6px;
+  border-radius:8px;display:flex;gap:10px;align-items:center;cursor:pointer;
+  transition:all .15s;
+}
+.checklist li:hover{background:#475569}
+.checklist li.checked{background:#064e3b;text-decoration:line-through;opacity:.6}
+.checklist li input{width:18px;height:18px;cursor:pointer}
+
+/* Quiz */
+.quiz-q{margin-bottom:20px;padding:16px;background:var(--panel2);border-radius:10px}
+.quiz-q .q{font-weight:600;margin-bottom:12px}
+.quiz-opt{
+  display:block;padding:10px 14px;background:var(--panel);margin-bottom:6px;
+  border-radius:6px;cursor:pointer;border:2px solid transparent;
+}
+.quiz-opt:hover{border-color:var(--primary)}
+.quiz-opt.selected{border-color:var(--primary);background:#1e40af40}
+.quiz-opt.correct{border-color:var(--success);background:#06402030}
+.quiz-opt.wrong{border-color:var(--danger);background:#7f1d1d30}
+
+/* Charts */
+.chart-container{
+  background:white;padding:16px;border-radius:10px;margin-bottom:16px;
+  height:300px;position:relative;
+}
+
+/* Print Mode */
+@media print{
+  .tabs, header, .no-print{display:none !important}
+  .phase{display:block !important;page-break-after:always}
+  body{background:white;color:black}
+  .card{background:white;border:1px solid #ccc}
+}
+
+.help-banner{
+  background:#1e3a8a;border-left:4px solid var(--primary);
+  padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:14px;
+}
+
+.formula-table{width:100%;border-collapse:collapse;margin:8px 0}
+.formula-table td{padding:6px 10px;border-bottom:1px solid var(--border)}
+.formula-table td:first-child{color:var(--muted);width:40%}
+.formula-table td:last-child{font-family:monospace;color:#fbbf24}
+
+.led{
+  display:inline-block;width:12px;height:12px;border-radius:50%;
+  background:#374151;box-shadow:inset 0 0 4px rgba(0,0,0,0.5);
+  margin-right:8px;vertical-align:middle;
+}
+.led.green{background:#10b981;box-shadow:0 0 8px #10b981}
+.led.red{background:#ef4444;box-shadow:0 0 8px #ef4444;animation:blink 1s infinite}
+.led.yellow{background:#fbbf24;box-shadow:0 0 8px #fbbf24}
+@keyframes blink{50%{opacity:.3}}
+
+.motor-visual{
+  background:radial-gradient(circle, #1e3a8a 0%, #0f172a 100%);
+  height:120px;border-radius:10px;margin:10px 0;
+  display:flex;align-items:center;justify-content:center;position:relative;
+  overflow:hidden;
+}
+.motor-rotor{
+  width:80px;height:80px;border-radius:50%;
+  background:conic-gradient(#fbbf24, #f59e0b, #fbbf24, #f59e0b);
+  border:4px solid #475569;position:relative;
+  transition:filter .3s;
+}
+.motor-rotor::after{
+  content:"";position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);width:60%;height:6px;background:#1e293b;
+  border-radius:3px;
+}
+.motor-rotor.spinning{animation:spin var(--spin-speed,2s) linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.motor-status{
+  position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
+  font-size:11px;color:var(--muted);background:rgba(0,0,0,0.5);
+  padding:2px 8px;border-radius:4px;
+}
+
+.points-summary{
+  background:var(--panel2);padding:16px;border-radius:10px;margin-top:16px;
+}
+.points-summary table{width:100%}
+.points-summary td{padding:6px 10px}
+.points-summary tr.total{font-weight:bold;border-top:2px solid var(--border)}
+
+.password-row{
+  display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap;
+}
+.password-row input{
+  padding:10px 14px;border-radius:8px;border:2px solid var(--border);
+  background:var(--panel);color:var(--text);font-size:14px;flex:1;min-width:160px;
+}
+.password-row input:focus{outline:none;border-color:#fbbf24}
+
+/* Lehrer-Inhalte: nur sichtbar im Lehrermodus */
+.teacher-only{display:none}
+body.teacher-mode .teacher-only{display:block}
+/* Login-Karte im Lehrermodus ausblenden */
+body.teacher-mode #teacherLoginCard{display:none}
+.solution-banner{
+  background:linear-gradient(135deg,#451a03 0%, #78350f 100%);
+  border:2px dashed #fbbf24;color:#fde68a;
+  padding:12px 16px;border-radius:8px;margin-bottom:10px;font-size:13px;
+}
+.empty-chart-hint{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  pointer-events:none;color:#94a3b8;font-style:italic;font-size:14px;text-align:center;padding:20px;
+}
+</style>
+</head>
+<body>
+
+<div class="toast-area" id="toastArea"></div>
+
+<div class="modal-overlay" id="dangerModal">
+  <div class="modal">
+    <h2 id="modalTitle">⚠️ GEFAHR!</h2>
+    <p id="modalText"></p>
+    <div class="actions">
+      <button class="btn ghost" onclick="closeModal()">Verstanden – Aktion wurde blockiert</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+<header>
+  <h1>🔬 Virtuelles Labor – Fremderregter Gleichstrommotor</h1>
+  <div class="sub">Belastungskennlinien: n = f(M) • I<sub>A</sub> = f(M) • P<sub>el</sub> = f(M)</div>
+  <div class="meta">
+    <span>📚 ELTEC4n – DP2ET</span>
+    <span>⏱ 4 × 50 min</span>
+    <span>🏫 Lycée Technique Ettelbruck</span>
+  </div>
+  <div class="teacher-badge" id="teacherBadge" onclick="disableTeacher()" title="Klicken zum Deaktivieren">👨‍🏫 LEHRERMODUS aktiv<span class="x">✕</span></div>
+</header>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-phase="0">📖 Start</button>
+  <button class="tab" data-phase="1">1️⃣ Theorie</button>
+  <button class="tab" data-phase="2">2️⃣ Antestat <span class="badge" id="quizBadge">0/5</span></button>
+  <button class="tab" data-phase="3">3️⃣ Sicherheits-Check</button>
+  <button class="tab" data-phase="4">4️⃣ Virtuelles Labor 🧪</button>
+  <button class="tab" data-phase="5">5️⃣ Auswertung</button>
+  <button class="tab" data-phase="6">📋 Labor-Checkliste</button>
+</div>
+
+<!-- ============= PHASE 0: START ============= -->
+<div class="phase active" data-phase="0">
+  <div class="card">
+    <h2>👋 Willkommen im virtuellen Labor!</h2>
+    <p>Bevor du im echten Labor mit dem fremderregten Gleichstrommotor arbeitest, kannst du hier <b>jeden Schritt zuerst sicher simulieren</b>. So weißt du genau, was du im Labor zu tun hast – und vor allem: <b>was du auf keinen Fall tun darfst!</b></p>
+  </div>
+
+  <div class="grid-2">
+    <div class="card info-card">
+      <h2>🎯 Deine Lernziele</h2>
+      <ul style="padding-left:20px">
+        <li>Den Aufbau des fremderregten GSM verstehen</li>
+        <li>Den Motor <b>sicher</b> in Betrieb nehmen</li>
+        <li>Gefahren erkennen und vermeiden</li>
+        <li>Die Größen n, I<sub>A</sub>, U<sub>A</sub> und M messen</li>
+        <li>Die Belastungskennlinien aufnehmen und interpretieren</li>
+      </ul>
+    </div>
+    <div class="card success-card">
+      <h2>📋 Dein Weg durch die Phasen</h2>
+      <ol style="padding-left:20px">
+        <li><b>Theorie</b> lesen und verstehen</li>
+        <li><b>Antestat</b> bestehen (≥ 60 %)</li>
+        <li><b>Sicherheits-Check</b> durchgehen</li>
+        <li><b>Simulation</b> durchführen</li>
+        <li><b>Diagramme</b> auswerten</li>
+        <li><b>Checkliste</b> für das echte Labor</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="card warning-card">
+    <h2>⚠️ Warum ein virtuelles Labor?</h2>
+    <p>Beim Arbeiten mit Gleichstrommotoren gibt es <b>zwei lebenswichtige Regeln</b>, deren Missachtung zu schweren Schäden führt:</p>
+    <ul style="padding-left:20px;margin-top:8px">
+      <li>🔥 <b>Anker ohne Erregung einschalten</b> → Wicklung verbrennt</li>
+      <li>💥 <b>Erregung im Betrieb unterbrechen</b> → Motor "geht durch", Anker zerreißt</li>
+    </ul>
+    <p style="margin-top:10px">Hier kannst du diese Fehler einmal <b>gefahrlos ausprobieren</b>, um zu verstehen, was passieren würde – und sie dann im echten Labor sicher vermeiden.</p>
+  </div>
+
+  <div class="card teacher-card" id="teacherLoginCard">
+    <h2>👨‍🏫 Lehrer-Zugang</h2>
+    <p>Lehrkräfte können mit dem Masterpasswort direkt zur Simulation springen und sehen Musterlösungen zu Diagrammen und Auswertefragen.</p>
+    <div class="password-row">
+      <input type="password" id="teacherPwd" placeholder="Masterpasswort eingeben…" onkeydown="if(event.key==='Enter') unlockTeacher()">
+      <button class="btn teacher" onclick="unlockTeacher()">🔓 Lehrermodus aktivieren</button>
+    </div>
+    <div id="teacherMsg" style="margin-top:10px;font-size:13px;color:var(--muted)"></div>
+  </div>
+
+  <div class="card teacher-only" id="teacherActiveCard" style="border-color:#10b981;background:linear-gradient(135deg,#064e3b 0%, #065f46 100%)">
+    <h2 style="color:#a7f3d0">👨‍🏫 Lehrermodus ist aktiv</h2>
+    <p>Du siehst aktuell die <b>Lehrer-Ansicht</b> mit Musterlösungen unter den Diagrammen und ausführlichen Antworten zu den Auswertefragen.</p>
+    <p style="margin-top:6px">Wechsle in die <b>Schüler-Ansicht</b>, um die Oberfläche so zu sehen, wie sie deine Schüler sehen werden.</p>
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn warning" onclick="disableTeacher()">👨‍🎓 In Schülermodus wechseln</button>
+      <button class="btn ghost" onclick="goPhase(4)">→ Zur Simulation</button>
+      <button class="btn ghost" onclick="goPhase(5)">→ Zur Auswertung</button>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:24px">
+    <button class="btn" onclick="goPhase(1)">📖 Mit Phase 1 starten →</button>
+  </div>
+</div>
+
+<!-- ============= PHASE 1: THEORIE ============= -->
+<div class="phase" data-phase="1">
+  <div class="card">
+    <h2>📖 Phase 1 – Theorie und Sicherheit</h2>
+    <p>Lies diesen Abschnitt sorgfältig. Du brauchst ihn, um das Antestat zu bestehen.</p>
+  </div>
+
+  <div class="card">
+    <h2>⚙️ Aufbau des fremderregten GSM</h2>
+    <p>Der fremderregte Gleichstrommotor besitzt <b>zwei getrennte Stromkreise</b>, die von zwei <b>voneinander unabhängigen</b> Spannungsquellen gespeist werden:</p>
+    <div class="grid-2" style="margin-top:14px">
+      <div style="background:#1e3a8a40;padding:14px;border-radius:8px;border-left:4px solid var(--primary)">
+        <h3>🧲 Erregerkreis (Index <i>f</i>)</h3>
+        <p>Speist die <b>Feldspule</b> im Ständer.<br>Erzeugt das konstante Magnetfeld <b>Φ</b>.</p>
+      </div>
+      <div style="background:#7f1d1d40;padding:14px;border-radius:8px;border-left:4px solid var(--danger)">
+        <h3>⚡ Ankerkreis (Index <i>A</i>)</h3>
+        <p>Führt den <b>Ankerstrom I<sub>A</sub></b> durch den Läufer.<br>Erzeugt zusammen mit Φ das <b>Drehmoment M</b>.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🧮 Die wichtigsten Formeln</h2>
+    <div class="formula"><b>Ankerspannungsgleichung:</b>  U<sub>A</sub> = R<sub>A</sub> · I<sub>A</sub> + U<sub>i</sub></div>
+    <div class="formula"><b>Induzierte Spannung (2. MGl.):</b>  U<sub>i</sub> = c · Φ · n</div>
+    <div class="formula"><b>Drehmoment (1. MGl.):</b>  M = c · Φ · I<sub>A</sub></div>
+    <div class="formula"><b>Drehzahl:</b>  n = (U<sub>A</sub> − R<sub>A</sub> · I<sub>A</sub>) / (c · Φ)</div>
+    <div class="formula"><b>Elektrische Aufnahmeleistung:</b>  P<sub>el</sub> = U<sub>A</sub> · I<sub>A</sub></div>
+  </div>
+
+  <div class="card">
+    <h2>📈 Verhalten bei Belastung</h2>
+    <p>Wird das Drehmoment M erhöht, so <b>muss</b> der Ankerstrom I<sub>A</sub> steigen (weil M ~ I<sub>A</sub>). Durch den größeren Spannungsfall R<sub>A</sub>·I<sub>A</sub> sinkt U<sub>i</sub> – und damit auch n leicht.</p>
+    <p style="margin-top:10px">→ Der fremderregte GSM hat eine <b>harte Drehzahlkennlinie</b>: n nimmt mit steigender Last nur wenig ab.</p>
+  </div>
+
+  <div class="card danger-card">
+    <h2>🔥 Gefahr 1: Anker ohne Erregung einschalten</h2>
+    <p><b>Lebenswichtige Regel: ZUERST Erregung, DANN Anker!</b></p>
+    <p>Ohne Erregung ist Φ ≈ 0 → U<sub>i</sub> = c·Φ·n ≈ 0. Dann gilt:</p>
+    <div class="formula" style="background:#1f2937">I<sub>A</sub> = (U<sub>A</sub> − U<sub>i</sub>) / R<sub>A</sub> ≈ U<sub>A</sub> / R<sub>A</sub></div>
+    <p>Da R<sub>A</sub> sehr klein ist (oft &lt; 1 Ω), fließt ein <b>Vielfaches des Nennstroms</b> → Wicklung brennt durch.</p>
+  </div>
+
+  <div class="card danger-card">
+    <h2>💥 Gefahr 2: Erregung im Betrieb unterbrechen</h2>
+    <p><b>Niemals die Erregung im Betrieb abschalten – der Motor "geht durch"!</b></p>
+    <p>Fällt I<sub>f</sub> aus → Φ → 0:</p>
+    <div class="formula" style="background:#1f2937">n = (U<sub>A</sub> − R<sub>A</sub>·I<sub>A</sub>) / (c · Φ)  →  ∞</div>
+    <p>Der Motor dreht immer schneller → die <b>Fliehkräfte zerreißen den Anker</b> → herumfliegende Bruchstücke = Lebensgefahr!</p>
+  </div>
+
+  <div class="card success-card">
+    <h2>✅ Richtige Inbetriebnahme – Schritt für Schritt</h2>
+    <ol style="padding-left:20px;line-height:2">
+      <li>Alle Schalter <b>öffnen</b>, alle Stellwiderstände auf <b>Maximum</b></li>
+      <li><b>Erregerkreis</b> einschalten → Magnetfeld aufbauen (I<sub>f</sub> = I<sub>fN</sub> = 0,35 A)</li>
+      <li><b>Ankerkreis</b> einschalten, U<sub>A</sub> langsam von 0 auf U<sub>AN</sub> = 220 V hochfahren</li>
+      <li>Motor läuft hoch, Betriebswerte kontrollieren</li>
+      <li>Messung durchführen</li>
+    </ol>
+    <p style="margin-top:12px"><b>Ausschalten in umgekehrter Reihenfolge:</b><br>U<sub>A</sub> → 0, Anker aus, <b>dann erst</b> Erregung aus.</p>
+  </div>
+
+  <div class="card">
+    <h2>🧰 Typenschild des Versuchsmotors</h2>
+    <table class="formula-table">
+      <tr><td>Nenn-Ankerspannung U<sub>AN</sub></td><td>220 V</td></tr>
+      <tr><td>Nenn-Ankerstrom I<sub>AN</sub></td><td>1,2 A</td></tr>
+      <tr><td>Nenn-Erregerstrom I<sub>fN</sub></td><td>0,35 A</td></tr>
+      <tr><td>Nenn-Drehzahl n<sub>N</sub></td><td>2300 1/min</td></tr>
+      <tr><td>Nenn-Drehmoment M<sub>N</sub></td><td>1,0 N·m</td></tr>
+      <tr><td>Nennleistung P<sub>N</sub></td><td>≈ 240 W</td></tr>
+    </table>
+  </div>
+
+  <div style="text-align:center;margin-top:20px">
+    <button class="btn ghost" onclick="goPhase(0)">← Zurück</button>
+    <button class="btn" onclick="goPhase(2)">Zum Antestat →</button>
+  </div>
+</div>
+
+<!-- ============= PHASE 2: ANTESTAT ============= -->
+<div class="phase" data-phase="2">
+  <div class="card">
+    <h2>📝 Antestat</h2>
+    <p>Beantworte alle 5 Fragen. Du brauchst <b>mindestens 60 %</b>, um ins Labor zu dürfen.</p>
+    <p style="font-size:13px;color:var(--muted)">💡 Die Reihenfolge der Antworten ist bei jedem Aufruf zufällig – Abschreiben lohnt sich also nicht!</p>
+  </div>
+
+  <div class="card" id="quizCard">
+    <div id="quiz"></div>
+    <div style="text-align:center;margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn" onclick="checkQuiz()">Antworten überprüfen</button>
+      <button class="btn ghost" onclick="reshuffleQuiz()">🔀 Antworten neu mischen</button>
+    </div>
+    <div id="quizResult" style="margin-top:20px"></div>
+  </div>
+
+  <div style="text-align:center;margin-top:20px">
+    <button class="btn ghost" onclick="goPhase(1)">← Zur Theorie</button>
+    <button class="btn" onclick="goPhase(3)">Zum Sicherheits-Check →</button>
+  </div>
+</div>
+
+<!-- ============= PHASE 3: SICHERHEITS-CHECK ============= -->
+<div class="phase" data-phase="3">
+  <div class="card">
+    <h2>✅ Sicherheits-Check</h2>
+    <p>Bevor du auch nur einen Schalter berührst, gehst du diese Liste durch. <b>Alle Punkte müssen abgehakt sein!</b></p>
+  </div>
+
+  <div class="card">
+    <ul class="checklist" id="safetyChecklist">
+      <li><input type="checkbox" id="sc1"><label for="sc1">Schaltung entspricht dem geprüften Schaltplan</label></li>
+      <li><input type="checkbox" id="sc2"><label for="sc2">Alle Stellwiderstände auf Maximum</label></li>
+      <li><input type="checkbox" id="sc3"><label for="sc3">Alle Schalter offen</label></li>
+      <li><input type="checkbox" id="sc4"><label for="sc4">Anschlussklemmen fest angezogen, keine losen Leiter</label></li>
+      <li><input type="checkbox" id="sc5"><label for="sc5">Bremse steht auf "0"</label></li>
+      <li><input type="checkbox" id="sc6"><label for="sc6">Lehrperson hat den Aufbau freigegeben</label></li>
+    </ul>
+    <div class="progress-bar"><div class="progress-fill" id="safetyProgress" style="width:0%"></div></div>
+    <div id="safetyStatus" style="text-align:center;margin-top:10px;color:var(--muted)">0 / 6 Punkte erledigt</div>
+  </div>
+
+  <div class="card warning-card">
+    <h2>⚠️ Was tun im Notfall?</h2>
+    <p>Wenn der Drehzahlmesser plötzlich stark nach oben geht oder du hörst, dass der Motor immer schneller wird:</p>
+    <p style="text-align:center;font-size:18px;margin-top:10px"><b>🛑 SOFORT die rote NOTAUS-Taste am Labortisch drücken!</b></p>
+    <p style="text-align:center">Danach die Lehrperson rufen.</p>
+  </div>
+
+  <div style="text-align:center;margin-top:20px">
+    <button class="btn ghost" onclick="goPhase(2)">← Antestat</button>
+    <button class="btn" onclick="goPhase(4)">Zur Simulation 🧪 →</button>
+  </div>
+</div>
+
+<!-- ============= PHASE 4: VIRTUELLES LABOR ============= -->
+<div class="phase" data-phase="4">
+  <div class="card">
+    <h2>🧪 Phase 3 – Virtuelles Labor</h2>
+    <p>Hier kannst du die <b>komplette Inbetriebnahme und Messung simulieren</b>. Folge der Anleitung links Schritt für Schritt – wenn du die Reihenfolge falsch machst, siehst du, was im echten Labor passieren würde!</p>
+  </div>
+
+  <div class="lab-layout">
+    <!-- LINKS: Step-by-Step Anleitung -->
+    <div>
+      <div class="card">
+        <h2>📋 Schritt-für-Schritt-Anleitung</h2>
+        <div class="steps" id="stepList">
+          <div class="step current" data-step="1">
+            <div class="step-content">
+              <div class="step-title">Erregung einschalten</div>
+              <div class="step-desc">Klicke auf den Schalter "Erregung" und stelle I<sub>f</sub> auf 0,35 A ein.</div>
+            </div>
+          </div>
+          <div class="step" data-step="2">
+            <div class="step-content">
+              <div class="step-title">Anker einschalten</div>
+              <div class="step-desc">Klicke auf den Schalter "Anker" und fahre U<sub>A</sub> langsam von 0 auf 220 V hoch.</div>
+            </div>
+          </div>
+          <div class="step" data-step="3">
+            <div class="step-content">
+              <div class="step-title">Leerlaufwerte ablesen</div>
+              <div class="step-desc">M = 0. Klicke "Messpunkt aufnehmen", um Werte in die Tabelle zu übernehmen.</div>
+            </div>
+          </div>
+          <div class="step" data-step="4">
+            <div class="step-content">
+              <div class="step-title">Bremse schrittweise erhöhen</div>
+              <div class="step-desc">Stelle die Bremse auf 0,2 / 0,4 / 0,6 / 0,8 / 1,0 / 1,2 N·m und nimm jeden Punkt auf.</div>
+            </div>
+          </div>
+          <div class="step" data-step="5">
+            <div class="step-content">
+              <div class="step-title">Korrekt herunterfahren</div>
+              <div class="step-desc">1) Bremse → 0   2) U<sub>A</sub> → 0   3) Anker AUS   4) ZULETZT Erregung AUS</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="color:#fbbf24">💡 Tipp</h3>
+        <p style="font-size:13px">Probier ruhig auch mal aus, was passiert, wenn du die Reihenfolge falsch machst – im virtuellen Labor ist das ungefährlich, im echten Labor wäre es eine Katastrophe!</p>
+      </div>
+    </div>
+
+    <!-- RECHTS: Simulator -->
+    <div>
+      <div class="card">
+        <h2>🎛️ Bedienpult</h2>
+
+        <div style="background:#1e3a8a;border-left:4px solid #fbbf24;padding:10px 14px;border-radius:6px;margin-bottom:12px;font-size:13px">
+          🔒 <b>Sicherheits-Verriegelung aktiv:</b> Die Schalter können nur in der korrekten Reihenfolge bedient werden. Falsche Schaltversuche werden blockiert und zeigen die Konsequenz, die im echten Labor eingetreten wäre.
+        </div>
+
+        <!-- Motor Visual -->
+        <div class="motor-visual">
+          <div class="motor-rotor" id="motorRotor"></div>
+          <div class="motor-status" id="motorStatus">Motor steht still</div>
+        </div>
+
+        <!-- Schalter -->
+        <div class="switch-group">
+          <div class="switch off" id="switchErr" onclick="toggleSwitch('err')">
+            <span class="led" id="ledErr"></span>
+            <span>Erregung</span>
+          </div>
+          <div class="switch off" id="switchAnk" onclick="toggleSwitch('ank')">
+            <span class="led" id="ledAnk"></span>
+            <span>Anker</span>
+          </div>
+        </div>
+
+        <!-- Regler -->
+        <div class="control-panel">
+          <div class="control-row">
+            <label>U<sub>f</sub> / R<sub>v,f</sub></label>
+            <input type="range" id="ifSlider" min="0" max="50" step="1" value="0" oninput="updateSim()">
+            <span class="val"><span id="ifVal">0,00</span> A</span>
+          </div>
+          <div class="control-row">
+            <label>U<sub>A</sub></label>
+            <input type="range" id="uaSlider" min="0" max="240" step="2" value="0" oninput="updateSim()">
+            <span class="val"><span id="uaVal">0</span> V</span>
+          </div>
+          <div class="control-row">
+            <label>Bremse M</label>
+            <input type="range" id="mSlider" min="0" max="14" step="1" value="0" oninput="updateSim()">
+            <span class="val"><span id="mVal">0,0</span> N·m</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>📟 Messgeräte</h2>
+        <div class="instruments">
+          <div class="instr" id="instrIf">
+            <div class="label">I<sub>f</sub> – Erregerstrom</div>
+            <div class="value" id="dispIf">0,00</div>
+            <div class="unit">A (soll: 0,35 A)</div>
+          </div>
+          <div class="instr" id="instrUa">
+            <div class="label">U<sub>A</sub> – Ankerspannung</div>
+            <div class="value" id="dispUa">0</div>
+            <div class="unit">V (soll: 220 V)</div>
+          </div>
+          <div class="instr" id="instrIa">
+            <div class="label">I<sub>A</sub> – Ankerstrom</div>
+            <div class="value" id="dispIa">0,00</div>
+            <div class="unit">A</div>
+          </div>
+          <div class="instr" id="instrN">
+            <div class="label">n – Drehzahl</div>
+            <div class="value" id="dispN">0</div>
+            <div class="unit">1/min</div>
+          </div>
+          <div class="instr" id="instrM">
+            <div class="label">M – Drehmoment</div>
+            <div class="value" id="dispM">0,0</div>
+            <div class="unit">N·m</div>
+          </div>
+          <div class="instr" id="instrP">
+            <div class="label">P<sub>el</sub> – Aufnahmeleistung</div>
+            <div class="value" id="dispP">0</div>
+            <div class="unit">W</div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;text-align:center">
+          <button class="btn success" onclick="recordPoint()" id="recBtn">📌 Messpunkt aufnehmen</button>
+          <button class="btn warning" onclick="resetSim()">🔄 Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Messtabelle -->
+  <div class="card">
+    <h2>📊 Messtabelle <span style="font-size:13px;color:var(--muted);font-weight:normal">(automatisch ausgefüllt)</span></h2>
+    <table class="measure" id="measureTable">
+      <thead>
+        <tr>
+          <th>Nr.</th><th>U<sub>A</sub> / V</th><th>I<sub>f</sub> / A</th>
+          <th>M / N·m</th><th>n / 1/min</th><th>I<sub>A</sub> / A</th>
+          <th>P<sub>el</sub> / W</th>
+        </tr>
+      </thead>
+      <tbody id="measureBody"></tbody>
+    </table>
+    <div style="margin-top:10px;text-align:right;font-size:13px;color:var(--muted)">
+      <span id="measureCount">0</span> / 7 Messpunkten aufgenommen
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:20px">
+    <button class="btn ghost" onclick="goPhase(3)">← Sicherheits-Check</button>
+    <button class="btn" onclick="goPhase(5)">Zur Auswertung →</button>
+  </div>
+</div>
+
+<!-- ============= PHASE 5: AUSWERTUNG ============= -->
+<div class="phase" data-phase="5">
+  <div class="card">
+    <h2>📈 Auswertung & Diagramme</h2>
+    <p>Aus deinen Messwerten werden hier automatisch die drei Belastungskennlinien gezeichnet. Die Auswertung machst du selbst in deinem Bericht.</p>
+  </div>
+
+  <div class="card">
+    <h3>Diagramm 1: n = f(M) – Drehzahl-Drehmoment-Kennlinie</h3>
+    <div class="chart-container"><canvas id="chartN"></canvas><div class="empty-chart-hint" id="hintN">Noch keine Messwerte – nimm zuerst Messpunkte in der Simulation auf.</div></div>
+    <div class="teacher-only">
+      <div class="solution-banner">👨‍🏫 <b>Musterlösung:</b> Die Drehzahl sinkt mit steigendem M nahezu linear, aber nur leicht (≈ 8 % von Leerlauf bis Nennlast). → <b>Hartes Verhalten</b> (Nebenschlussverhalten).</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Diagramm 2: I<sub>A</sub> = f(M) – Ankerstrom-Drehmoment-Kennlinie</h3>
+    <div class="chart-container"><canvas id="chartI"></canvas><div class="empty-chart-hint" id="hintI">Noch keine Messwerte – nimm zuerst Messpunkte in der Simulation auf.</div></div>
+    <div class="teacher-only">
+      <div class="solution-banner">👨‍🏫 <b>Musterlösung:</b> Der Ankerstrom steigt <b>linear / proportional</b> mit M an. Bestätigt die 1. Maschinengleichung: M = c · Φ · I<sub>A</sub> → bei Φ = const. gilt I<sub>A</sub> ~ M.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Diagramm 3: P<sub>el</sub> = f(M) – Leistungs-Drehmoment-Kennlinie</h3>
+    <div class="chart-container"><canvas id="chartP"></canvas><div class="empty-chart-hint" id="hintP">Noch keine Messwerte – nimm zuerst Messpunkte in der Simulation auf.</div></div>
+    <div class="teacher-only">
+      <div class="solution-banner">👨‍🏫 <b>Musterlösung:</b> Die elektrische Aufnahmeleistung steigt linear mit M, weil P<sub>el</sub> = U<sub>A</sub> · I<sub>A</sub> und I<sub>A</sub> ~ M. Schon im Leerlauf wird ≈ 33 W aufgenommen (Reibungs- und Eisenverluste).</div>
+    </div>
+  </div>
+
+  <div class="card info-card">
+    <h2>💡 Auswertefragen für deinen Bericht</h2>
+    <p>Beantworte diese drei Fragen <b>schriftlich in deinem Laborbericht</b>. Verwende dafür deine eigenen Messwerte und Diagramme.</p>
+    <ol style="padding-left:24px;margin-top:10px;line-height:1.8">
+      <li><b>a) Drehzahlverhalten:</b> Beschreibe in zwei bis drei Sätzen den Verlauf der Kennlinie n = f(M). Wie stark nimmt die Drehzahl von Leerlauf bis Nennlast ab (in %)?</li>
+      <li><b>b) Ankerstromverhalten:</b> Beschreibe den Verlauf von I<sub>A</sub> = f(M). Welcher mathematische Zusammenhang lässt sich erkennen? Welche theoretische Formel bestätigt das?</li>
+      <li><b>c) Leistungsverhalten:</b> Beschreibe den Verlauf der Kennlinie P<sub>el</sub> = f(M). Warum steigt die elektrische Aufnahmeleistung mit dem Drehmoment an?</li>
+    </ol>
+  </div>
+
+  <div class="card teacher-only">
+    <h2 style="color:#fbbf24">👨‍🏫 Musterlösung Auswertefragen</h2>
+    <p><b>a) Drehzahlverhalten:</b> Die Drehzahl sinkt nahezu linear und nur gering ab.<br>
+    Δn = n<sub>0</sub> − n<sub>N</sub> = 2500 − 2300 = 200 1/min → Δn / n<sub>0</sub> ≈ <b>8 %</b><br>
+    → hartes (Nebenschluss-)Verhalten.</p>
+    <p style="margin-top:10px"><b>b) Ankerstromverhalten:</b> I<sub>A</sub> steigt <b>direkt proportional / linear</b> mit M.<br>
+    Aus der 1. Maschinengleichung: M = c · Φ · I<sub>A</sub> → bei Φ = const. gilt I<sub>A</sub> ~ M.<br>
+    Der Offset im Leerlauf (I<sub>A0</sub> ≈ 0,15 A) deckt Reibungs- und Eisenverluste ab.</p>
+    <p style="margin-top:10px"><b>c) Leistungsverhalten:</b> P<sub>el</sub> wächst linear mit M, weil P<sub>el</sub> = U<sub>A</sub> · I<sub>A</sub> bei konstantem U<sub>A</sub> und I<sub>A</sub> ~ M. Im Leerlauf werden ≈ 33 W aufgenommen, um die mechanische Leistung P<sub>mech</sub> = 2π·n·M plus Verluste zu liefern.</p>
+  </div>
+
+  <div style="text-align:center;margin-top:20px">
+    <button class="btn ghost" onclick="goPhase(4)">← Simulation</button>
+    <button class="btn" onclick="goPhase(6)">Labor-Checkliste →</button>
+  </div>
+</div>
+
+<!-- ============= PHASE 6: LABOR-CHECKLISTE ============= -->
+<div class="phase" data-phase="6">
+  <div class="card">
+    <h2>📋 Labor-Checkliste – Spickzettel zum Ausdrucken</h2>
+    <p>Nimm diesen Zettel ins echte Labor mit. <b>Nichts vergessen, in der richtigen Reihenfolge arbeiten.</b></p>
+    <div style="text-align:right">
+      <button class="btn no-print" onclick="window.print()">🖨️ Drucken</button>
+    </div>
+  </div>
+
+  <div class="card success-card">
+    <h2>✅ EINSCHALTEN – die richtige Reihenfolge</h2>
+    <ol style="padding-left:24px;line-height:2.2;font-size:15px">
+      <li>Sicherheits-Check (alle 6 Punkte abhaken)</li>
+      <li>Lehrperson kontrolliert den Aufbau</li>
+      <li><b>Erregung EIN</b> → I<sub>f</sub> = 0,35 A einstellen ✓</li>
+      <li><b>Anker EIN</b> → U<sub>A</sub> langsam von 0 auf 220 V hochfahren</li>
+      <li>Motor läuft hoch, Werte kontrollieren</li>
+      <li><b>Leerlaufwerte messen</b> (M = 0)</li>
+      <li>Bremse schrittweise auf 0,2 / 0,4 / 0,6 / 0,8 / 1,0 / 1,2 N·m</li>
+      <li>Bei jedem Punkt: warten, dann n und I<sub>A</sub> ablesen und notieren</li>
+    </ol>
+  </div>
+
+  <div class="card warning-card">
+    <h2>🛑 AUSSCHALTEN – umgekehrte Reihenfolge</h2>
+    <ol style="padding-left:24px;line-height:2.2;font-size:15px">
+      <li>Bremse → <b>0</b></li>
+      <li>U<sub>A</sub> → <b>0</b></li>
+      <li>Anker <b>AUS</b></li>
+      <li><b>ZULETZT:</b> Erregung AUS</li>
+    </ol>
+  </div>
+
+  <div class="card danger-card">
+    <h2>⚠️ NIEMALS!</h2>
+    <ul style="padding-left:24px;line-height:2;font-size:15px">
+      <li>❌ Anker einschalten, bevor die Erregung an ist → Wicklung brennt</li>
+      <li>❌ Erregung im Betrieb abschalten → <b>Motor geht durch!</b></li>
+      <li>❌ I<sub>f</sub> während der Messung verändern → Φ ändert sich, Messreihe falsch</li>
+      <li>❌ Mehr als 1,2 N·m Bremse → Überlast!</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>📊 Messtabelle zum Mitnehmen</h2>
+    <table class="measure">
+      <thead>
+        <tr>
+          <th>Nr.</th><th>U<sub>A</sub> / V</th><th>I<sub>f</sub> / A</th>
+          <th>M / N·m</th><th>n / 1/min</th><th>I<sub>A</sub> / A</th>
+          <th>P<sub>el</sub> = U<sub>A</sub>·I<sub>A</sub></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>220</td><td>0,35</td><td>0,0</td><td>____</td><td>____</td><td>____</td></tr>
+        <tr><td>2</td><td>220</td><td>0,35</td><td>0,2</td><td>____</td><td>____</td><td>____</td></tr>
+        <tr><td>3</td><td>220</td><td>0,35</td><td>0,4</td><td>____</td><td>____</td><td>____</td></tr>
+        <tr><td>4</td><td>220</td><td>0,35</td><td>0,6</td><td>____</td><td>____</td><td>____</td></tr>
+        <tr><td>5</td><td>220</td><td>0,35</td><td>0,8</td><td>____</td><td>____</td><td>____</td></tr>
+        <tr><td>6</td><td>220</td><td>0,35</td><td>1,0</td><td>____</td><td>____</td><td>____</td></tr>
+        <tr><td>7</td><td>220</td><td>0,35</td><td>1,2</td><td>____</td><td>____</td><td>____</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card info-card">
+    <h2>🆘 Notfall</h2>
+    <p style="text-align:center;font-size:18px">Drehzahl steigt unkontrolliert? Motor wird hörbar lauter?</p>
+    <p style="text-align:center;font-size:22px;color:#fbbf24"><b>🛑 ROTE NOTAUS-TASTE drücken!</b></p>
+    <p style="text-align:center">Dann sofort die Lehrperson rufen.</p>
+  </div>
+
+  <div style="text-align:center;margin-top:20px" class="no-print">
+    <button class="btn ghost" onclick="goPhase(5)">← Auswertung</button>
+    <button class="btn" onclick="goPhase(0)">↺ Zum Start</button>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ============= STATE =============
+const state = {
+  err: false, ank: false,
+  if_: 0, ua: 0, m: 0,
+  ia: 0, n: 0, p: 0,
+  measurements: [],
+  currentStep: 1,
+  quizAnswers: {},      // qIndex -> displayed option index selected
+  quizShuffleMap: [],   // pro Frage: array der gemischten Original-Indizes
+  teacherMode: false,
+};
+
+const TEACHER_PWD = "gsm";
+
+// Motor-Konstanten
+const RA = 8.0;
+const c = 0.0007;
+
+// ============= TABS / NAVIGATION =============
+function goPhase(n){
+  document.querySelectorAll('.phase').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  const ph = document.querySelector(`.phase[data-phase="${n}"]`);
+  const tb = document.querySelector(`.tab[data-phase="${n}"]`);
+  if(ph) ph.classList.add('active');
+  if(tb) tb.classList.add('active');
+  window.scrollTo(0,0);
+  if(n===5) buildCharts();
+}
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>goPhase(parseInt(tab.dataset.phase)));
+});
+
+// ============= LEHRERMODUS =============
+function unlockTeacher(){
+  const input = document.getElementById('teacherPwd');
+  const msg = document.getElementById('teacherMsg');
+  if(input.value.trim().toLowerCase() === TEACHER_PWD){
+    // Vorherigen "done"-Status der Tabs merken (für Wiederherstellung beim Deaktivieren)
+    state.tabsBeforeTeacher = {
+      q2: document.querySelector('.tab[data-phase="2"]').classList.contains('done'),
+      q3: document.querySelector('.tab[data-phase="3"]').classList.contains('done'),
+      badge: document.getElementById('quizBadge').textContent,
+    };
+    state.teacherMode = true;
+    document.body.classList.add('teacher-mode');
+    document.getElementById('teacherBadge').classList.add('active');
+    document.querySelector('.tab[data-phase="2"]').classList.add('done');
+    document.querySelector('.tab[data-phase="3"]').classList.add('done');
+    document.getElementById('quizBadge').textContent = '✓';
+    msg.innerHTML = '<span style="color:#10b981">✅ Lehrermodus aktiv – Musterlösungen werden angezeigt. Springe zur Simulation…</span>';
+    input.value = '';
+    if(typeof chartN !== 'undefined' && chartN) buildCharts();
+    setTimeout(()=>goPhase(4), 800);
+    toast('success','👨‍🏫','Lehrermodus aktiviert – Musterlösungen freigeschaltet');
+  } else {
+    msg.innerHTML = '<span style="color:#ef4444">❌ Falsches Passwort</span>';
+    input.value = '';
+    input.focus();
+  }
+}
+
+function disableTeacher(){
+  if(!state.teacherMode) return;
+  state.teacherMode = false;
+  document.body.classList.remove('teacher-mode');
+  document.getElementById('teacherBadge').classList.remove('active');
+  // Tab-Status zurücksetzen, falls vor Lehrermodus nicht "done"
+  const before = state.tabsBeforeTeacher || {q2:false, q3:false, badge:'0/5'};
+  if(!before.q2) document.querySelector('.tab[data-phase="2"]').classList.remove('done');
+  if(!before.q3) document.querySelector('.tab[data-phase="3"]').classList.remove('done');
+  document.getElementById('quizBadge').textContent = before.badge;
+  // Login-Hinweis zurücksetzen
+  const msg = document.getElementById('teacherMsg');
+  if(msg) msg.innerHTML = '';
+  // Charts neu zeichnen (Musterlösung verschwindet)
+  if(typeof chartN !== 'undefined' && chartN) buildCharts();
+  toast('info','👨‍🎓','Schülermodus aktiv – Musterlösungen ausgeblendet');
+}
+
+// ============= TOAST =============
+function toast(type, icon, text, ms=3500){
+  const el = document.createElement('div');
+  el.className = 'toast '+type;
+  el.innerHTML = `<span class="icon">${icon}</span><span>${text}</span>`;
+  document.getElementById('toastArea').appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(120%)';setTimeout(()=>el.remove(),300)}, ms);
+}
+
+// ============= MODAL =============
+function showDanger(title, text){
+  document.getElementById('modalTitle').innerHTML = title;
+  document.getElementById('modalText').innerHTML = text;
+  const overlay = document.getElementById('dangerModal');
+  const modal = overlay.querySelector('.modal');
+  overlay.classList.add('active','danger-active');
+  modal.classList.add('blink');
+}
+function closeModal(){
+  const overlay = document.getElementById('dangerModal');
+  const modal = overlay.querySelector('.modal');
+  overlay.classList.remove('active','danger-active');
+  modal.classList.remove('blink');
+  // KEIN resetSim mehr — die Verriegelung hat die gefährliche Aktion bereits blockiert,
+  // der Motor läuft weiter wie zuvor.
+}
+
+// ============= QUIZ (mit Shuffle) =============
+const quizData = [
+  {
+    q:"Frage 1 – Welche zwei elektrischen Stromkreise hat der fremderregte GSM?",
+    opts:[
+      "Hauptstromkreis und Hilfsstromkreis",
+      "Erregerkreis (Feldwicklung) und Ankerkreis (Ankerwicklung)",
+      "Wechselstromkreis und Gleichstromkreis",
+      "Statorkreis und Außenleiter"
+    ], correct:1
+  },
+  {
+    q:"Frage 2 – In welcher Reihenfolge müssen Anker- und Erregerkreis eingeschaltet werden?",
+    opts:[
+      "Egal, beide gleichzeitig",
+      "Erst Anker, dann Erregung",
+      "Erst Erregung, dann Anker (sonst Wicklung verbrennt!)",
+      "Erst Bremse, dann beide gleichzeitig"
+    ], correct:2
+  },
+  {
+    q:"Frage 3 – Was bedeutet 'der Motor geht durch'?",
+    opts:[
+      "Der Motor läuft normal",
+      "Der Motor steht still",
+      "Die Drehzahl steigt unkontrolliert ins Unendliche → Anker kann zerreißen",
+      "Der Motor dreht sich rückwärts"
+    ], correct:2
+  },
+  {
+    q:"Frage 4 – Wie ändert sich die Drehzahl n, wenn das Drehmoment M erhöht wird (bei U_A und I_f konstant)?",
+    opts:[
+      "n bleibt konstant",
+      "n steigt stark an",
+      "n sinkt stark ab",
+      "n sinkt nur leicht ab (harte Drehzahlkennlinie)"
+    ], correct:3
+  },
+  {
+    q:"Frage 5 – Welcher Zusammenhang besteht zwischen M und I_A bei konstanter Erregung?",
+    opts:[
+      "M = U_A · I_A (proportional zu Spannung)",
+      "M = c · Φ · I_A → M ist proportional zu I_A",
+      "M = R_A · I_A² (quadratisch)",
+      "M und I_A sind unabhängig voneinander"
+    ], correct:1
+  }
+];
+
+// Fisher–Yates Shuffle
+function shuffleArr(a){
+  const arr = a.slice();
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+  return arr;
+}
+
+function buildQuiz(){
+  // Erzeuge pro Frage einen gemischten Index-Array, der Originalpositionen abbildet
+  state.quizShuffleMap = quizData.map(q => shuffleArr(q.opts.map((_,i)=>i)));
+  state.quizAnswers = {};
+
+  const c = document.getElementById('quiz');
+  c.innerHTML = '';
+  quizData.forEach((q,qi)=>{
+    const div = document.createElement('div');
+    div.className='quiz-q';
+    const map = state.quizShuffleMap[qi];
+    const optsHtml = map.map((origIdx, dispIdx) =>
+      `<label class="quiz-opt" data-q="${qi}" data-disp="${dispIdx}" data-orig="${origIdx}">
+         <input type="radio" name="q${qi}" value="${dispIdx}" style="display:none">
+         ${String.fromCharCode(65+dispIdx)}) ${q.opts[origIdx]}
+       </label>`
+    ).join('');
+    div.innerHTML = `<div class="q">${q.q}</div>` + optsHtml;
+    c.appendChild(div);
+  });
+  // Bind clicks
+  document.querySelectorAll('.quiz-opt').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const qi = parseInt(el.dataset.q);
+      const dispIdx = parseInt(el.dataset.disp);
+      state.quizAnswers[qi] = dispIdx;
+      document.querySelectorAll(`.quiz-opt[data-q="${qi}"]`).forEach(o=>o.classList.remove('selected'));
+      el.classList.add('selected');
+      el.querySelector('input').checked = true;
+    });
+  });
+}
+
+function reshuffleQuiz(){
+  buildQuiz();
+  document.getElementById('quizResult').innerHTML = '';
+  toast('info','🔀','Antworten wurden neu gemischt');
+}
+
+function checkQuiz(){
+  let correct = 0;
+  quizData.forEach((q,qi)=>{
+    const dispSelected = state.quizAnswers[qi];
+    document.querySelectorAll(`.quiz-opt[data-q="${qi}"]`).forEach(el=>{
+      el.classList.remove('correct','wrong');
+      const orig = parseInt(el.dataset.orig);
+      const disp = parseInt(el.dataset.disp);
+      if(orig === q.correct) el.classList.add('correct');
+      else if(dispSelected === disp) el.classList.add('wrong');
+    });
+    // Ausgewählte Originalantwort:
+    if(dispSelected !== undefined){
+      const origSelected = state.quizShuffleMap[qi][dispSelected];
+      if(origSelected === q.correct) correct++;
+    }
+  });
+  const pct = Math.round(correct/5*100);
+  document.getElementById('quizBadge').textContent = correct+'/5';
+  const tab = document.querySelector('.tab[data-phase="2"]');
+  if(correct>=3) tab.classList.add('done');
+  const res = document.getElementById('quizResult');
+  if(correct>=3){
+    res.innerHTML = `<div class="card success-card"><h2>✅ Bestanden!</h2><p>Du hast ${correct} von 5 Fragen richtig (${pct} %). Du darfst jetzt ins Labor!</p></div>`;
+  } else {
+    res.innerHTML = `<div class="card danger-card"><h2>❌ Noch nicht bestanden</h2><p>Du hast nur ${correct} von 5 Fragen richtig (${pct} %). Du brauchst mind. 3 von 5 (60 %). Lies die Theorie nochmal und versuche es erneut.</p></div>`;
+  }
+}
+
+// ============= SAFETY CHECKLIST =============
+function updateSafety(){
+  const boxes = document.querySelectorAll('#safetyChecklist input');
+  let n = 0; boxes.forEach(b=>{if(b.checked) n++});
+  document.getElementById('safetyProgress').style.width = (n/6*100)+'%';
+  document.getElementById('safetyStatus').textContent = `${n} / 6 Punkte erledigt`;
+  if(n===6){
+    document.getElementById('safetyStatus').innerHTML = '<b style="color:#10b981">✅ Alle Punkte erledigt – du darfst einschalten!</b>';
+    document.querySelector('.tab[data-phase="3"]').classList.add('done');
+  }
+}
+document.querySelectorAll('#safetyChecklist input').forEach(b=>{
+  b.addEventListener('change',()=>{
+    b.parentElement.classList.toggle('checked', b.checked);
+    updateSafety();
+  });
+});
+document.querySelectorAll('#safetyChecklist li').forEach(li=>{
+  li.addEventListener('click',(e)=>{
+    if(e.target.tagName!=='INPUT'){
+      const cb = li.querySelector('input');
+      cb.checked = !cb.checked;
+      cb.dispatchEvent(new Event('change'));
+    }
+  });
+});
+
+// ============= SIMULATOR =============
+// VERRIEGELUNGS-LOGIK: Schalter dürfen nur in der korrekten Reihenfolge betätigt werden
+function toggleSwitch(which){
+  // ----- ERREGUNGS-Schalter -----
+  if(which === 'err'){
+    if(state.err){
+      // Versuch: Erregung AUSschalten
+      if(state.ank || state.ua > 5){
+        // VERRIEGELT — Erregung darf nicht aus, solange Anker an oder UA > 0
+        showDanger(
+          '<span class="lock-tag">🔒 VERRIEGELT</span><br>💥 MOTOR GEHT DURCH – LEBENSGEFAHR!',
+          "Die Simulation hat deine Aktion blockiert.<br><br>" +
+          "Du wolltest die Erregung im Betrieb abschalten. Im echten Labor wäre Folgendes passiert:<br><br>" +
+          "Φ → 0, also n = (U<sub>A</sub> − R<sub>A</sub>·I<sub>A</sub>) / (c·Φ) → <b>∞</b><br><br>" +
+          "Der Motor hätte sich immer schneller gedreht, der Anker wäre durch die Fliehkräfte <b>zerrissen worden</b>. Herumfliegende Bruchstücke = <b>LEBENSGEFAHR!</b><br><br>" +
+          "<b>Richtige Ausschalt-Reihenfolge:</b><br>" +
+          "1) Bremse → 0  &nbsp; 2) U<sub>A</sub> → 0  &nbsp; 3) Anker AUS  &nbsp; 4) ZULETZT Erregung AUS"
+        );
+        return;
+      }
+      // Erlaubt: Erregung aus
+      state.err = false;
+    } else {
+      // Erregung AN — immer erlaubt
+      state.err = true;
+    }
+    document.getElementById('switchErr').classList.toggle('on', state.err);
+    document.getElementById('switchErr').classList.toggle('off', !state.err);
+    document.getElementById('ledErr').className = 'led '+(state.err?'green':'');
+    updateSim();
+    return;
+  }
+
+  // ----- ANKER-Schalter -----
+  if(which === 'ank'){
+    if(!state.ank){
+      // Versuch: Anker EINschalten
+      if(!state.err){
+        // VERRIEGELT — Anker ohne Erregung
+        showDanger(
+          '<span class="lock-tag">🔒 VERRIEGELT</span><br>🔥 ANKER VERBRENNT – LEBENSGEFAHR!',
+          "Die Simulation hat deine Aktion blockiert.<br><br>" +
+          "Du wolltest den Anker einschalten, ohne dass die Erregung an ist. Im echten Labor wäre Folgendes passiert:<br><br>" +
+          "Ohne Magnetfeld ist U<sub>i</sub> = c·Φ·n ≈ 0. Es fließt:<br>" +
+          "I<sub>A</sub> = U<sub>A</sub> / R<sub>A</sub> = ein <b>Vielfaches</b> des Nennstroms (1,2 A)<br><br>" +
+          "Die Ankerwicklung wäre <b>durchgebrannt</b> – Funkenflug, Brandgefahr.<br><br>" +
+          "<b>Richtige Einschalt-Reihenfolge:</b><br>" +
+          "1) Erregung EIN, I<sub>f</sub> = 0,35 A einstellen  &nbsp; 2) U<sub>A</sub> auf 0  &nbsp; 3) Anker EIN  &nbsp; 4) U<sub>A</sub> langsam auf 220 V hochfahren"
+        );
+        return;
+      }
+      if(state.if_ < 0.30){
+        // VERRIEGELT — Erregerstrom zu klein
+        showDanger(
+          '<span class="lock-tag">🔒 VERRIEGELT</span><br>⚠️ ERREGERSTROM ZU KLEIN!',
+          "Die Simulation hat deine Aktion blockiert.<br><br>" +
+          "Der Erregerstrom I<sub>f</sub> ist nur " + state.if_.toFixed(2).replace('.',',') + " A. Du brauchst <b>I<sub>f</sub> = 0,35 A</b>, bevor du den Anker einschaltest.<br><br>" +
+          "Bei zu kleinem I<sub>f</sub> ist Φ zu klein → derselbe Effekt wie ohne Erregung: <b>Anker brennt durch!</b>"
+        );
+        return;
+      }
+      if(state.ua > 10){
+        // VERRIEGELT — UA muss bei 0 stehen vorm Einschalten
+        showDanger(
+          '<span class="lock-tag">🔒 VERRIEGELT</span><br>⚠️ U<sub>A</sub> MUSS AUF 0 STEHEN!',
+          "Die Simulation hat deine Aktion blockiert.<br><br>" +
+          "U<sub>A</sub> steht aktuell auf <b>" + state.ua + " V</b>. Vor dem Einschalten des Ankers muss U<sub>A</sub> auf <b>0 V</b> stehen, dann langsam von 0 auf 220 V hochfahren.<br><br>" +
+          "Sonst würde der Motor einen Spannungsstoß bekommen und der Anlaufstrom wäre viel zu groß."
+        );
+        return;
+      }
+      // Erlaubt: Anker an
+      state.ank = true;
+    } else {
+      // Versuch: Anker AUSschalten
+      if(state.ua > 10){
+        // VERRIEGELT — UA muss zuerst auf 0 reduziert werden
+        showDanger(
+          '<span class="lock-tag">🔒 VERRIEGELT</span><br>⚠️ ERST U<sub>A</sub> AUF 0!',
+          "Die Simulation hat deine Aktion blockiert.<br><br>" +
+          "Vor dem Ausschalten des Ankers muss U<sub>A</sub> auf <b>0 V</b> reduziert werden (aktuell: " + state.ua + " V).<br><br>" +
+          "<b>Richtige Ausschalt-Reihenfolge:</b><br>" +
+          "1) Bremse → 0  &nbsp; 2) U<sub>A</sub> → 0  &nbsp; 3) Anker AUS  &nbsp; 4) ZULETZT Erregung AUS"
+        );
+        return;
+      }
+      // Erlaubt: Anker aus
+      state.ank = false;
+    }
+    document.getElementById('switchAnk').classList.toggle('on', state.ank);
+    document.getElementById('switchAnk').classList.toggle('off', !state.ank);
+    document.getElementById('ledAnk').className = 'led '+(state.ank?'green':'');
+    updateSim();
+    return;
+  }
+}
+
+function updateSim(){
+  state.if_ = parseInt(document.getElementById('ifSlider').value)/100;
+  state.ua = parseInt(document.getElementById('uaSlider').value);
+  state.m = parseInt(document.getElementById('mSlider').value)/10;
+
+  document.getElementById('ifVal').textContent = (state.err ? state.if_ : 0).toFixed(2).replace('.',',');
+  document.getElementById('uaVal').textContent = state.ank ? state.ua : 0;
+  document.getElementById('mVal').textContent = state.m.toFixed(1).replace('.',',');
+
+  let displayIf = state.err ? state.if_ : 0;
+  let displayUa = state.ank ? state.ua : 0;
+  let phi = displayIf;
+
+  let ia = 0, n = 0, pel = 0;
+  if(state.err && state.ank && phi > 0.05 && displayUa > 0){
+    ia = 0.15/0.35*phi + state.m * (1.0/0.35) * phi;
+    n = (displayUa/220) * (2500 - 200*state.m) * (0.35/phi);
+    if(n<0) n=0;
+    pel = displayUa * ia;
+  }
+
+  state.ia = ia;
+  state.n = n;
+  state.p = pel;
+
+  document.getElementById('dispIf').textContent = displayIf.toFixed(2).replace('.',',');
+  document.getElementById('dispUa').textContent = Math.round(displayUa);
+  document.getElementById('dispIa').textContent = ia.toFixed(2).replace('.',',');
+  document.getElementById('dispN').textContent = Math.round(n);
+  document.getElementById('dispM').textContent = state.m.toFixed(1).replace('.',',');
+  document.getElementById('dispP').textContent = Math.round(pel);
+
+  document.getElementById('instrIf').classList.toggle('active', state.err && displayIf>0.3);
+  document.getElementById('instrUa').classList.toggle('active', state.ank && displayUa>10);
+  document.getElementById('instrIa').classList.toggle('active', ia>0.05);
+  document.getElementById('instrN').classList.toggle('active', n>10);
+
+  document.getElementById('instrIf').classList.toggle('danger', state.err && (displayIf<0.3 || displayIf>0.4) && state.ank);
+  document.getElementById('instrIa').classList.toggle('danger', ia > 1.5);
+
+  const rotor = document.getElementById('motorRotor');
+  const status = document.getElementById('motorStatus');
+  if(n > 50){
+    rotor.classList.add('spinning');
+    const spd = Math.max(0.2, 5000/n);
+    rotor.style.setProperty('--spin-speed', spd+'s');
+    status.textContent = `Motor läuft – ${Math.round(n)} 1/min`;
+  } else {
+    rotor.classList.remove('spinning');
+    status.textContent = state.err && state.ank ? "Motor läuft an..." : "Motor steht still";
+  }
+
+  updateStepProgress();
+}
+
+function updateStepProgress(){
+  let step = 1;
+  if(state.err && Math.abs(state.if_ - 0.35) < 0.05) step = 2;
+  if(step >= 2 && state.ank && state.ua >= 215) step = 3;
+  if(step >= 3 && state.measurements.length >= 1) step = 4;
+  if(step >= 4 && state.measurements.length >= 7) step = 5;
+
+  state.currentStep = step;
+  document.querySelectorAll('.step').forEach(s=>{
+    const sn = parseInt(s.dataset.step);
+    s.classList.remove('current','done');
+    if(sn < step) s.classList.add('done');
+    else if(sn === step) s.classList.add('current');
+  });
+}
+
+function recordPoint(){
+  if(state.measurements.length >= 7){
+    toast('warning','⚠️','Du hast bereits alle 7 Messpunkte aufgenommen!');
+    return;
+  }
+  if(!state.err || !state.ank){
+    toast('warning','⚠️','Erregung und Anker müssen EIN sein!');
+    return;
+  }
+  if(state.ua < 215 || state.ua > 225){
+    toast('warning','⚠️','U_A muss auf 220 V eingestellt sein! (aktuell: '+state.ua+' V)');
+    return;
+  }
+  if(Math.abs(state.if_ - 0.35) > 0.03){
+    toast('warning','⚠️','I_f muss auf 0,35 A eingestellt sein! (aktuell: '+state.if_.toFixed(2)+' A)');
+    return;
+  }
+  const expectedM = state.measurements.length * 0.2;
+  if(Math.abs(state.m - expectedM) > 0.1){
+    toast('warning','⚠️','Stelle die Bremse auf '+expectedM.toFixed(1).replace('.',',')+' N·m für Punkt '+(state.measurements.length+1));
+    return;
+  }
+  state.measurements.push({
+    ua: state.ua, if_: state.if_, m: state.m,
+    n: state.n, ia: state.ia, p: state.p
+  });
+  toast('success','✅','Messpunkt '+state.measurements.length+' aufgenommen');
+  buildMeasureTable();
+  updateStepProgress();
+
+  if(state.measurements.length === 7){
+    document.querySelector('.tab[data-phase="4"]').classList.add('done');
+    toast('success','🎉','Alle Messpunkte aufgenommen! Vergiss nicht, korrekt herunterzufahren.');
+  }
+}
+
+function buildMeasureTable(){
+  const targets = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2];
+  const body = document.getElementById('measureBody');
+  body.innerHTML = '';
+  for(let i=0; i<7; i++){
+    const tr = document.createElement('tr');
+    const m = state.measurements[i];
+    if(m){
+      tr.classList.add('recorded');
+      tr.innerHTML = `<td>${i+1}</td><td>${m.ua}</td><td>${m.if_.toFixed(2).replace('.',',')}</td>` +
+        `<td>${m.m.toFixed(1).replace('.',',')}</td><td>${Math.round(m.n)}</td>` +
+        `<td>${m.ia.toFixed(2).replace('.',',')}</td><td>${Math.round(m.p)}</td>`;
+    } else {
+      const isCurrent = i === state.measurements.length;
+      if(isCurrent) tr.classList.add('current-row');
+      tr.innerHTML = `<td>${i+1}</td><td class="empty">220</td><td class="empty">0,35</td>` +
+        `<td>${targets[i].toFixed(1).replace('.',',')}</td><td class="empty">—</td>` +
+        `<td class="empty">—</td><td class="empty">—</td>`;
+    }
+    body.appendChild(tr);
+  }
+  document.getElementById('measureCount').textContent = state.measurements.length;
+}
+
+function resetSim(){
+  state.err = false; state.ank = false;
+  state.if_ = 0; state.ua = 0; state.m = 0;
+  state.ia = 0; state.n = 0; state.p = 0;
+  document.getElementById('ifSlider').value = 0;
+  document.getElementById('uaSlider').value = 0;
+  document.getElementById('mSlider').value = 0;
+  document.getElementById('switchErr').className = 'switch off';
+  document.getElementById('switchAnk').className = 'switch off';
+  document.getElementById('ledErr').className = 'led';
+  document.getElementById('ledAnk').className = 'led';
+  document.querySelectorAll('.instr').forEach(i=>{i.classList.remove('active','danger')});
+  document.getElementById('motorRotor').classList.remove('spinning');
+  updateSim();
+}
+
+// ============= CHARTS =============
+let chartN, chartI, chartP;
+function buildCharts(){
+  const M_axis = state.measurements.map(m=>m.m);
+  const data_n = state.measurements.map(m=>Math.round(m.n));
+  const data_i = state.measurements.map(m=>Number(m.ia.toFixed(2)));
+  const data_p = state.measurements.map(m=>Math.round(m.p));
+  const labelsM = M_axis.map(v=>v.toFixed(1));
+
+  // Musterlösung (nur im Lehrermodus angezeigt)
+  const refM = ['0.0','0.2','0.4','0.6','0.8','1.0','1.2'];
+  const refN = [2500, 2460, 2420, 2380, 2340, 2300, 2260];
+  const refI = [0.15, 0.35, 0.55, 0.75, 0.95, 1.15, 1.35];
+  const refP = refI.map(i=>Math.round(i*220));
+
+  const hasData = state.measurements.length > 0;
+
+  // Empty-Hints anzeigen, wenn keine Daten und kein Lehrermodus
+  ['hintN','hintI','hintP'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = (!hasData && !state.teacherMode) ? 'flex' : 'none';
+  });
+
+  if(chartN) chartN.destroy();
+  if(chartI) chartI.destroy();
+  if(chartP) chartP.destroy();
+
+  const baseOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color:'#1f2937' } } },
+    scales: {
+      x: { title: { display:true, text:'M in N·m', color:'#1f2937' }, ticks:{color:'#1f2937'} },
+      y: { ticks:{color:'#1f2937'} }
+    }
+  };
+
+  function buildDataset(canvasId, color, dataStudent, dataRef, axisLabel, ymax){
+    const datasets = [];
+    if(hasData){
+      datasets.push({
+        label: axisLabel + ' (deine Messung)',
+        data: dataStudent,
+        borderColor: color, backgroundColor: color+'40',
+        tension: 0.1, pointRadius: 5, pointBackgroundColor: color
+      });
+    }
+    if(state.teacherMode){
+      datasets.push({
+        label: axisLabel + ' (Musterlösung)',
+        data: dataRef,
+        borderColor: '#fbbf24', backgroundColor: '#fbbf2420',
+        borderDash: [6,4], tension: 0.1, pointRadius: 4, pointStyle:'rectRot', pointBackgroundColor:'#fbbf24'
+      });
+    }
+    // Achsen-Labels: bei Musterlösung oder Schüler-Daten passende M-Werte verwenden
+    const labels = hasData ? labelsM : refM;
+    return new Chart(document.getElementById(canvasId), {
+      type:'line',
+      data:{ labels, datasets },
+      options:{ ...baseOpts, scales:{ ...baseOpts.scales,
+        y:{ ...baseOpts.scales.y, title:{display:true,text:axisLabel,color:'#1f2937'}, suggestedMin:0, suggestedMax:ymax }}}
+    });
+  }
+
+  chartN = buildDataset('chartN', '#3b82f6', data_n, refN, 'n in 1/min', 3000);
+  chartI = buildDataset('chartI', '#ef4444', data_i, refI, 'I_A in A',   1.6);
+  chartP = buildDataset('chartP', '#10b981', data_p, refP, 'P_el in W',  350);
+}
+
+// ============= INIT =============
+buildQuiz();
+buildMeasureTable();
+updateSim();
+</script>
+</body>
+</html>
