@@ -377,7 +377,7 @@ body.teacher-mode #teacherLoginCard{display:none}
     <div class="formula"><b>Induzierte Spannung:</b> U<sub>i</sub> = c · Φ · n</div>
     <div class="formula"><b>Drehmoment:</b> M = c · Φ · I<sub>A</sub></div>
     <div class="formula"><b>Drehzahl:</b> n = (U<sub>A</sub> − R<sub>A</sub> · I<sub>A</sub>) / (c · Φ)</div>
-    <div class="formula"><b>Aufnahmeleistung:</b> P<sub>el</sub> = U<sub>A</sub> · I<sub>A</sub></div>
+    <div class="formula"><b>Aufnahmeleistung:</b> P<sub>el</sub> = U<sub>A</sub> · I<sub>A</sub> + I<sub>F</sub> · U<sub>F</sub></div>
   </div>
 
   <div class="card">
@@ -654,7 +654,7 @@ body.teacher-mode #teacherLoginCard{display:none}
   <div class="card">
     <h3>Diagramm 3: P<sub>el</sub> = f(M)</h3>
     <div class="chart-container"><canvas id="chartP"></canvas><div class="empty-chart-hint" id="hintP">Noch keine Messwerte.</div></div>
-    <div class="teacher-only"><div class="solution-banner">👨‍🏫 <b>Musterlösung:</b> P<sub>el</sub> = U<sub>A</sub>·I<sub>A</sub> – linear in M.</div></div>
+    <div class="teacher-only"><div class="solution-banner">👨‍🏫 <b>Musterlösung:</b> P<sub>el</sub> = U<sub>A</sub>·I<sub>A</sub> + I<sub>F</sub>·U<sub>F</sub> – linear in M (y = a·M + b, b = I<sub>F</sub>·U<sub>F</sub>).</div></div>
   </div>
 
   <div class="card info-card">
@@ -671,7 +671,7 @@ body.teacher-mode #teacherLoginCard{display:none}
     <h2 style="color:#fbbf24">👨‍🏫 Musterlösung</h2>
     <p><b>a)</b> Δn = 200/min → ≈ 8 % → hartes Verhalten.</p>
     <p><b>b)</b> M = c · Φ · I<sub>A</sub> → I<sub>A</sub> ~ M (proportional).</p>
-    <p><b>c)</b> P<sub>el</sub> = U<sub>A</sub> · I<sub>A</sub>, U<sub>A</sub> konstant, I<sub>A</sub> ~ M → P<sub>el</sub> ~ M.</p>
+    <p><b>c)</b> P<sub>el</sub> = U<sub>A</sub> · I<sub>A</sub> + I<sub>F</sub> · U<sub>F</sub>. U<sub>A</sub>, I<sub>F</sub>, U<sub>F</sub> konstant; I<sub>A</sub> ~ M → P<sub>el</sub> linear in M (y = a·M + b mit b = I<sub>F</sub>·U<sub>F</sub>).</p>
   </div>
 
   <div class="phase-complete-bar" id="bar6">
@@ -795,12 +795,13 @@ const state = {
 const TEACHER_PWD = "gsm";
 const TEACHER_EMAIL = "tom.bleyer@me.com";
 const RA = 8.0;
+const U_F = 220;  // Erregerspannung [V] — bei separater Erregung typisch = U_A; bei Bedarf anpassen
 
 // Korrekte Vorhersage-Antworten (kurz formuliert für saubere Darstellung)
 const PRED_CORRECT = {
   N: { letter:'C', text:'n fällt linear, leicht ab (ca. 8 %)', explanation:'n = (U_A − R_A·I_A)/(c·Φ). Steigt I_A, wächst Spannungsfall, n sinkt leicht. → harte Kennlinie.' },
   I: { letter:'B', text:'I_A steigt linear/proportional mit M', explanation:'1. Maschinengl.: M = c·Φ·I_A. Bei konstantem Φ folgt I_A ~ M.' },
-  P: { letter:'C', text:'P_el steigt linear mit M', explanation:'P_el = U_A · I_A. U_A konstant, I_A ~ M → P_el linear in M.' }
+  P: { letter:'C', text:'P_el steigt linear mit M', explanation:'P_el = U_A · I_A + I_F · U_F. U_A, I_F, U_F konstant → I_F·U_F ist der konstante Achsenabschnitt b; U_A·I_A liefert den linearen Anteil a·M (y = a·M + b).' }
 };
 
 // ============= HELPER =============
@@ -1154,7 +1155,9 @@ function updateSim(){
     ia = 0.15/0.35*phi + state.m * (1.0/0.35) * phi;
     n = (displayUa/220) * (2500 - 200*state.m) * (0.35/phi);
     if(n<0) n=0;
-    pel = displayUa * ia;
+    // Elektrische Gesamt-Aufnahmeleistung: Anker- + Erregerkreis
+    // P_el = U_A · I_A + I_F · U_F  (entspricht y = a·M + b mit b = I_F · U_F)
+    pel = displayUa * ia + displayIf * U_F;
   }
   state.ia=ia; state.n=n; state.p=pel;
   document.getElementById('dispIf').textContent = displayIf.toFixed(2).replace('.',',');
@@ -1353,7 +1356,8 @@ function buildCharts(){
   const refM = ['0.0','0.2','0.4','0.6','0.8','1.0','1.2'];
   const refN = [2500, 2460, 2420, 2380, 2340, 2300, 2260];
   const refI = [0.15, 0.35, 0.55, 0.75, 0.95, 1.15, 1.35];
-  const refP = refI.map(i=>Math.round(i*220));
+  // P_el = U_A·I_A + I_F·U_F (mit U_A=220 V, I_F=0,35 A nominell, U_F=220 V)
+  const refP = refI.map(i=>Math.round(i*220 + 0.35*U_F));
   const hasData = state.measurements.length > 0;
   ['hintN','hintI','hintP'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1377,7 +1381,7 @@ function buildCharts(){
   }
   chartN = build('chartN', '#3b82f6', data_n, refN, 'n in 1/min', 3000);
   chartI = build('chartI', '#ef4444', data_i, refI, 'I_A in A', 1.6);
-  chartP = build('chartP', '#10b981', data_p, refP, 'P_el in W', 350);
+  chartP = build('chartP', '#10b981', data_p, refP, 'P_el in W', 450);
 }
 
 // ============= REPORT =============
