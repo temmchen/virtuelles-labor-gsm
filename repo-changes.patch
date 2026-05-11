@@ -1,7 +1,7 @@
 From 1dee417035e61ecba0c445571a865734455b8182 Mon Sep 17 00:00:00 2001
 From: Tom Bleyer <tom.bleyer@me.com>
 Date: Mon, 11 May 2026 10:37:50 +0000
-Subject: [PATCH 1/2] =?UTF-8?q?Fix:=20fehlenden=20+b-Term=20(I=5FF=C2=B7U?=
+Subject: [PATCH 1/3] =?UTF-8?q?Fix:=20fehlenden=20+b-Term=20(I=5FF=C2=B7U?=
  =?UTF-8?q?=5FF)=20in=20P=5Fel=20erg=C3=A4nzt=20=E2=80=93=20inkl.=20aller?=
  =?UTF-8?q?=20Anzeigetexte?=
 MIME-Version: 1.0
@@ -109,7 +109,7 @@ index d83acc9..f651e80 100644
 From 856f5c9f65c35ffbeb2cd2800141162ae576ccc2 Mon Sep 17 00:00:00 2001
 From: Tom Bleyer <tom.bleyer@me.com>
 Date: Mon, 11 May 2026 10:40:12 +0000
-Subject: [PATCH 2/2] =?UTF-8?q?Add=20README.md=20mit=20Projektbeschreibung?=
+Subject: [PATCH 2/3] =?UTF-8?q?Add=20README.md=20mit=20Projektbeschreibung?=
  =?UTF-8?q?,=20Phasen-=C3=9Cbersicht=20und=20Modellgleichungen?=
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -280,6 +280,37 @@ index 0000000..584f993
 +---
 +
 +_Letzte fachliche Korrektur: P_el-Berechnung um den konstanten Erreger-Anteil `I_F · U_F` ergänzt (vorher nur `U_A · I_A`)._
+-- 
+2.34.1
+
+
+From 4647e06f7b1e994e154bfb938850f9e3f89073e1 Mon Sep 17 00:00:00 2001
+From: Tom Bleyer <tom.bleyer@me.com>
+Date: Mon, 11 May 2026 10:53:50 +0000
+Subject: [PATCH 3/3] =?UTF-8?q?Musterl=C3=B6sungs-Banner=20Diagramm=203:?=
+ =?UTF-8?q?=20nur=20P=5Fel-Formel,=20ohne=20Linearit=C3=A4ts-Erkl=C3=A4run?=
+ =?UTF-8?q?g?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ index.html | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/index.html b/index.html
+index f651e80..1543714 100644
+--- a/index.html
++++ b/index.html
+@@ -654,7 +654,7 @@ body.teacher-mode #teacherLoginCard{display:none}
+   <div class="card">
+     <h3>Diagramm 3: P<sub>el</sub> = f(M)</h3>
+     <div class="chart-container"><canvas id="chartP"></canvas><div class="empty-chart-hint" id="hintP">Noch keine Messwerte.</div></div>
+-    <div class="teacher-only"><div class="solution-banner">👨‍🏫 <b>Musterlösung:</b> P<sub>el</sub> = U<sub>A</sub>·I<sub>A</sub> + I<sub>F</sub>·U<sub>F</sub> – linear in M (y = a·M + b, b = I<sub>F</sub>·U<sub>F</sub>).</div></div>
++    <div class="teacher-only"><div class="solution-banner">👨‍🏫 <b>Musterlösung:</b> P<sub>el</sub> = U<sub>A</sub>·I<sub>A</sub> + I<sub>F</sub>·U<sub>F</sub></div></div>
+   </div>
+ 
+   <div class="card info-card">
 -- 
 2.34.1
 
