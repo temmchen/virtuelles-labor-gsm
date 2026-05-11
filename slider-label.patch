@@ -1,0 +1,29 @@
+From 8902e1dc194df4e2e581a3760a1f28da7414204a Mon Sep 17 00:00:00 2001
+From: Tom Bleyer <tom.bleyer@me.com>
+Date: Mon, 11 May 2026 13:08:48 +0000
+Subject: [PATCH] =?UTF-8?q?Slider-Label:=20'U=5Ff=20/=20R=5Fv,f'=20?=
+ =?UTF-8?q?=E2=86=92=20'Erregung=20I=5Ff'=20(didaktisch=20klarer)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ index.html | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/index.html b/index.html
+index 1543714..be34049 100644
+--- a/index.html
++++ b/index.html
+@@ -514,7 +514,7 @@ body.teacher-mode #teacherLoginCard{display:none}
+           <div class="switch off" id="switchAnk" onclick="toggleSwitch('ank')"><span class="led" id="ledAnk"></span><span>Anker</span></div>
+         </div>
+         <div class="control-panel">
+-          <div class="control-row"><label>U<sub>f</sub> / R<sub>v,f</sub></label><input type="range" id="ifSlider" min="0" max="50" step="1" value="0" oninput="updateSim()"><span class="val"><span id="ifVal">0,00</span> A</span></div>
++          <div class="control-row"><label>Erregung I<sub>f</sub></label><input type="range" id="ifSlider" min="0" max="50" step="1" value="0" oninput="updateSim()"><span class="val"><span id="ifVal">0,00</span> A</span></div>
+           <div class="control-row"><label>U<sub>A</sub></label><input type="range" id="uaSlider" min="0" max="240" step="2" value="0" oninput="updateSim()"><span class="val"><span id="uaVal">0</span> V</span></div>
+           <div class="control-row"><label>Bremse M</label><input type="range" id="mSlider" min="0" max="14" step="1" value="0" oninput="updateSim()"><span class="val"><span id="mVal">0,0</span> N·m</span></div>
+         </div>
+-- 
+2.34.1
+
